@@ -1,0 +1,60 @@
+package client
+
+import (
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/mortenterhart/trivial-tickets/structs"
+)
+
+// cliConfig holds the currenr command line tool
+var cliConfig structs.CLIConfig
+
+// client is an instance of the http.Client
+// Makes GET and POST requests to the server
+var client = http.Client{}
+
+// clientConfigured indicates whether the HTTP client has already been configured i.e. if it is already initialized
+var clientConfigured bool
+
+// get and post are replaceacble functions for the http.Client.Get and http.Client.Post functions
+var get = makeGETRequest
+var post = makePOSTRequest
+
+// FetchEmails sends a GET request to the path `api/fetchMails` and returns the response
+func FetchEmails() (mails map[string]structs.Mail, err error) {
+	response, err := get("api/fetchMails")
+	if err != nil {
+		err = fmt.Errorf("Failed to fetch emails: %v", err)
+		return
+	}
+
+	err = json.Unmarshal([]byte(response), &mails)
+	if err != nil {
+		err = fmt.Errorf("Error occured while unmarshaling the JSON: %v", err)
+		return
+	}
+
+	return
+}
+
+// AcknowledgeEmailReception sends a POST request with an `ID` to the received email of the server
+func AcknowledgeEmailReception(mail structs.Mail) (err error) {
+	jsonID := `{"id":"` + mail.ID + `"}`
+	_, err = post(jsonID, "api/verifyMail")
+
+	if err != nil {
+		err = fmt.Errorf("email acknowldgement failed: %v", err)
+	}
+
+	return
+}
