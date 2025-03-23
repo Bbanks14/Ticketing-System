@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -116,7 +116,7 @@ func makePOSTRequest(payload string, path string) (response string, err error) {
 		return "", fmt.Errorf("Error status code: %v %s", resp.Status, string(responseData))
 	}
 
-	if response.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("Error with https request. Status code: %v %s", resp.Status, string(responseData))
 	}
 	response = string(responseData)
@@ -127,7 +127,7 @@ func makePOSTRequest(payload string, path string) (response string, err error) {
 // initializeClient initializes the HTTP client with the server's certificate when using tls
 func initializeClient() {
 	configFilePath, _ := filepath.Abs(cliConfig.Cert)
-	cert, err := ioutil.ReadFile(configFilePath)
+	cert, err := io.ReadFile(configFilePath)
 
 	if err != nil {
 		log.Fatal(err)

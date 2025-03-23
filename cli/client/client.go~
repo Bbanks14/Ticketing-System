@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -57,4 +57,97 @@ func AcknowledgeEmailReception(mail structs.Mail) (err error) {
 	}
 
 	return
+}
+
+// SubmitEmail takes a structs.Mail and sends it to the server as JSON per POST request
+func SubmitEmail(mail string) (err error) {
+	resp, err := post(mail, "api/receive")
+	fmt.Println(resp)
+
+	return
+
+}
+
+// makeGETRequest requests a path string
+// and sends a GET request to the "path" on the server specified in the CLIConfig
+func makeGETRequest(path string) (response string, err error) {
+	if !clientConfigured {
+		initializeClient()
+	}
+
+	url := "https://" + cliConfig.Host + ":" + strconv.Itoa(int(cliConfig.Port)) + "/" + path
+
+	resp, err := client.Get(url)
+
+	if err != nil {
+		err = fmt.Errorf("Error sending get request: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	responseData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		err = fmt.Errorf("Error status code: %v %s", resp.Status, string(responseData))
+		return
+	}
+
+	return string(responseData), nil
+}
+
+// makePOSTRequest takes a payload and a path string and sends a
+// POST request to the "path" on the server specified in the CLIConfig
+func makePOSTRequest(payload string, path string) (response string, err error) {
+	if !clientConfigured {
+		initializeClient()
+	}
+
+	reader := strings.NewReader(payload)
+	url := fmt.Sprintf("https://%s:%d/%s", cliConfig.Host, cliConfig.Port, path)
+
+	resp, err := client.Post(url, "application/json", reader)
+
+	if err != nil {
+		return "", fmt.Errorf("Error sending post request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	responseData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("Error status code: %v %s", resp.Status, string(responseData))
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Error with https request. Status code: %v %s", resp.Status, string(responseData))
+	}
+	response = string(responseData)
+
+	return
+}
+
+// initializeClient initializes the HTTP client with the server's certificate when using tls
+func initializeClient() {
+	configFilePath, _ := filepath.Abs(cliConfig.Cert)
+	cert, err := io.ReadFile(configFilePath)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	certPool := x509.NewCertPool()
+	certPool.AppendCertsFromPEM(cert)
+
+	client = http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: certPool,
+			},
+		},
+		Timeout: 5 * time.Second,
+	}
+	clientConfigured = true
+}
+
+// SetCLIConfig sets the current CLIConfig
+func SetCLIConfig(config structs.CLIConfig) {
+	cliConfig = config
 }
