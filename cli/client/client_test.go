@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/mortenterhart/trivial-tickets/log/testlog"
-	"github.com/mortenterhart/trivial-tickets/structs"
-	"github.com/mortenterhart/trivial-tickets/structs/defaults"
+	"github.com/Bbanks14/Ticketing-System/log"
+	"github.com/Bbanks14/Ticketing-System/structs"
+	"github.com/Bbanks14/Ticketing-System/structs/defaults"
 
 )
 

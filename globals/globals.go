@@ -14,7 +14,7 @@ var Mails = make(map[string]structs.Mail)
 var ServerConfig *structs.ServerConfig
 
 // LogConfig contains the global logging configuration
-var LogCOnfig *structs.LogConfig
+var LogConfig *structs.LogConfig
 
 // Sessions holds all the sessions for the users.
 var Sessions = make(map[string]structs.SessionManager)

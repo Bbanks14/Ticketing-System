@@ -8,12 +8,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/mortenterhart/trivial-tickets/structs"
+	"github.com/Bbanks14/Ticketing-System/structs"
 )
 
 // cliConfig holds the currenr command line tool
@@ -85,7 +86,7 @@ func makeGETRequest(path string) (response string, err error) {
 	}
 	defer resp.Body.Close()
 
-	responseData, err := ioutil.ReadAll(resp.Body)
+	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		err = fmt.Errorf("Error status code: %v %s", resp.Status, string(responseData))
 		return
@@ -111,7 +112,7 @@ func makePOSTRequest(payload string, path string) (response string, err error) {
 	}
 	defer resp.Body.Close()
 
-	responseData, err := ioutil.ReadAll(resp.Body)
+	responseData, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("Error status code: %v %s", resp.Status, string(responseData))
 	}
@@ -127,7 +128,7 @@ func makePOSTRequest(payload string, path string) (response string, err error) {
 // initializeClient initializes the HTTP client with the server's certificate when using tls
 func initializeClient() {
 	configFilePath, _ := filepath.Abs(cliConfig.Cert)
-	cert, err := io.ReadFile(configFilePath)
+	cert, err := os.ReadFile(configFilePath)
 
 	if err != nil {
 		log.Fatal(err)

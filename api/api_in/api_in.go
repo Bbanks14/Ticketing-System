@@ -5,14 +5,19 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/mail"
 	"reflect"
 	"regexp"
 	"strconv"
-	"structs"
 
-	"github.com/sirupsen/logrus/hooks/writer"
-	//"github.com/pkg/errors"
+	"github.com/pkg/errors"
+
+	"github.com/Bbanks14/Ticketing-System/Ticketing-System/util/filehandler"
+	"github.com/Bbanks14/Ticketing-System/api/api_out"
+	"github.com/Bbanks14/Ticketing-System/globals"
+	"github.com/Bbanks14/Ticketing-System/log"
+	"github.com/Bbanks14/Ticketing-System/mail_events"
+	"github.com/Bbanks14/Ticketing-System/structs"
+	"github.com/Bbanks14/Ticketing-System/util/httptools"
 )
 
 // answerSubjectRegex is a regular expression defining the syntax of a subject
@@ -60,7 +65,7 @@ func ReceiveMail(writer http.ResponseWriter, request *http.Request) {
 		if readERR != nil {
 			httptools.StatusCodeError(writer, fmt.Sprintf("Unable to read request bosy: %v", readERR), http.StatusInternalServerError)
 			return
-		} 
+		}
 
 		// Decode JSON message and save it in jsonProperties map
 		var jsonProperties structs.JSONMap
@@ -75,7 +80,7 @@ func ReceiveMail(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		// Check if no additional JSON properties are defined 
+		// Check if no additional JSON properties are defined
 		if propErr := checkAdditionalPropertiesSet(jsonProperties); propErr != nil {
 			httptools.StatusCodeError(writer, fmt.Sprintf("Too many JSON properties given: %v", propErr.Error), http.StatusBadRequest)
 			return
@@ -90,9 +95,9 @@ func ReceiveMail(writer http.ResponseWriter, request *http.Request) {
 
 		// Populate the mail struct with the previously parsed JSON properties
 		mail := structs.Mail{
-			From: jsonProperties["from"].(string),
-			Subject: jsonProperties["subject"] (string),
-			Message: jsonProperties["message"] (string),
+			From:    jsonProperties["from"].(string),
+			Subject: jsonProperties["subject"](string),
+			Message: jsonProperties["message"](string),
 		}
 
 		// Validate the email address syntax using the above regex
@@ -129,7 +134,7 @@ func ReceiveMail(writer http.ResponseWriter, request *http.Request) {
 				api_out.SendMail(mail_events.NewAnswer, createdTicket)
 			} else {
 				// The subject is formatted like an answering mail, but the ticket id doesn't exist
-				log.Warnf("Ticket id '%s' does not belong to an existing ticket, creating " + "new ticket out of mail", ticketID)
+				log.Warnf("Ticket id '%s' does not belong to an existing ticket, creating "+"new ticket out of mail", ticketID)
 			}
 
 			// If the mail is not an answer, create a new ticket in every other case
@@ -153,7 +158,7 @@ func ReceiveMail(writer http.ResponseWriter, request *http.Request) {
 			// Create a JSONResponse with successful status and message
 			// write it into its own file
 			httptools.JSONResponse(write, structs.JSONMap{
-				"status": http.StatusOK,
+				"status":  http.StatusOK,
 				"message": http.StatusText(http.StatusOK),
 			})
 
@@ -164,7 +169,7 @@ func ReceiveMail(writer http.ResponseWriter, request *http.Request) {
 
 		// The handler does not accept any other method than POST
 		httptools.JSONError(writer, structs.JSONMap{
-			"status": http.StatusMethodNotAllowed,
+			"status":  http.StatusMethodNotAllowed,
 			"message": fmt.Sprintf("METHOD_NOT_ALLOWED (%s)", request.Method),
 		}, http.StatusMethodNotAllowed)
 
@@ -176,13 +181,13 @@ func ReceiveMail(writer http.ResponseWriter, request *http.Request) {
 // to a string considering a correct string conversion
 // Casting the integer to a string is not an option --
 // because the string consists of characters at the Unicode index that the integer infers
-func convertStatusToString(status structs.Status) string{
+func convertStatusToString(status structs.Status) string {
 	return strconv.Itoa(int(status))
 }
 
 // matchsAnswerSubject matches the given subject against the syntax of a subject
 // which causes a new answer to be created instead of a new ticket.
-// If the subject conforms to this pattern, the function returns 
+// If the subject conforms to this pattern, the function returns
 // the ticket id as string and true, else an empty string and false
 func matchAnswerSubject(subject string) (string, bool) {
 	if answerSubjectRegex.Match([]byte(subject)) {
@@ -207,22 +212,22 @@ type propertyNotDefinedError struct {
 	propertyName string
 }
 
-// Error returns a standard error message for a missing required 
+// Error returns a standard error message for a missing required
 // property and the corresponding property
-func (err propertyNotDefinedError) Error() string{
+func (err propertyNotDefinedError) Error() string {
 	return fmt.Sprintf("Required JSON property not defined: '%s'", err.propertyName)
 }
 
-// newPropertyNotDefinedError creates a new object with 
+// newPropertyNotDefinedError creates a new object with
 // the property name that is missing, in case one of it is missing.
-func newPropertyNotDefinedError(propertyName string) propertyNotDefinedError  {
+func newPropertyNotDefinedError(propertyName string) propertyNotDefinedError {
 	return propertyNotDefinedError{propertyName}
 }
 
 // checkRequiredPropertiesSet checks if the properties sent
 // within the request contains all required properties name, the API expects.
 // If all required properties are defined, the result is nil, otherwise an error is returned
-func checkRequiredPropertiesSet(jsonProperties, requiredProperty); propErr != nil  {
+func checkRequiredPropertiesSet(jsonProperties structs.JSONMap) error {
 	for requiredProperty := range apiParameters {
 		if propErr := checkPropertySet(jsonProperties, requiredProperty); propErr != nil {
 			return errors.Wrap(propErr, "missing properties in JSON body")
@@ -230,12 +235,12 @@ func checkRequiredPropertiesSet(jsonProperties, requiredProperty); propErr != ni
 	}
 
 	return nil
-	
+
 }
 
 // checkPropertySet is a helper function of checkRequiredPropertiesSet
 // It checks if a single property name is defined in the jsonProperties
-// If it is not defined, it returns a nil error, else it returns a new propertyNotDefinedError with the 
+// If it is not defined, it returns a nil error, else it returns a new propertyNotDefinedError with the
 // missing propertyName
 func checkPropertySet(jsonProperties structs.JSONMap, propName string) error {
 	if _, defined := jsonProperties[propName]; defined {
@@ -243,10 +248,10 @@ func checkPropertySet(jsonProperties structs.JSONMap, propName string) error {
 	}
 
 	return newPropertyNotDefinedError(propName)
-	
+
 }
 
-// checkAdditionalPropertiesSet checks if any other required properties are defined in the json properties map. 
+// checkAdditionalPropertiesSet checks if any other required properties are defined in the json properties map.
 // If there are additional properties, an error with the name of that property is returned, else nil
 func checkAdditionalPropertiesSet(jsonProperties structs.JSONMap) error {
 	for key := range jsonProperties {
